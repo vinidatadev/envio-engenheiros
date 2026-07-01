@@ -25,12 +25,29 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
     colunas = [c for c in df.columns if c not in ("Engenheiro", "Email", "Telefone")]
     df_img = df[colunas].copy()
 
+    # formata colunas numéricas com 1 casa decimal
+    for col in df_img.columns:
+        if pd.api.types.is_numeric_dtype(df_img[col]):
+            df_img[col] = df_img[col].apply(lambda v: f"{v:.1f}" if pd.notna(v) else "")
+
+    # monta linha de total (soma só colunas numéricas originais)
+    total_row = {}
+    numeric_cols = [c for c in df[colunas].columns if pd.api.types.is_numeric_dtype(df[c])]
+    for col in df_img.columns:
+        if col in numeric_cols:
+            total_row[col] = f"{df[col].sum():.1f}"
+        elif col == df_img.columns[0]:
+            total_row[col] = "TOTAL"
+        else:
+            total_row[col] = ""
+    df_total = pd.DataFrame([total_row])
+
     PADDING = 16
     HEADER_H = 44
     ROW_H = 36
+    TOTAL_H = 40
     FONT_SIZE = 16
 
-    # DejaVu suporta acentos; fallback pra arial no Windows local
     def load_font(bold=False, size=FONT_SIZE):
         candidates = (
             ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -50,14 +67,15 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
     font_header = load_font(bold=True)
     font_body   = load_font()
     font_title  = load_font(bold=True, size=18)
+    font_total  = load_font(bold=True)
 
-    # calcula largura de cada coluna
+    # calcula largura de cada coluna (considera dados + linha de total)
     dummy = Image.new("RGB", (1, 1))
     draw_dummy = ImageDraw.Draw(dummy)
     col_widths = []
     for col in df_img.columns:
         max_w = draw_dummy.textlength(str(col), font=font_header)
-        for val in df_img[col].astype(str):
+        for val in list(df_img[col].astype(str)) + list(df_total[col].astype(str)):
             w = draw_dummy.textlength(val, font=font_body)
             if w > max_w:
                 max_w = w
@@ -65,7 +83,7 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
 
     total_w = sum(col_widths)
     title_h = 48
-    total_h = title_h + HEADER_H + ROW_H * len(df_img) + 4
+    total_h = title_h + HEADER_H + ROW_H * len(df_img) + TOTAL_H + 4
 
     img = Image.new("RGB", (total_w, total_h), "#1e293b")
     draw = ImageDraw.Draw(img)
@@ -82,7 +100,7 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
         draw.text((x + PADDING, y + 10), str(col), font=font_header, fill="#ffffff")
         x += col_widths[i]
 
-    # linhas
+    # linhas de dados
     for r_idx, (_, row) in enumerate(df_img.iterrows()):
         y = title_h + HEADER_H + r_idx * ROW_H
         bg = "#263548" if r_idx % 2 == 0 else "#1e293b"
@@ -92,7 +110,16 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
             draw.text((x + PADDING, y + 9), val, font=font_body, fill="#e2e8f0")
             x += col_widths[c_idx]
 
-    # borda separadora entre colunas
+    # linha de total
+    y_total = title_h + HEADER_H + ROW_H * len(df_img)
+    draw.rectangle([0, y_total, total_w, y_total + TOTAL_H], fill="#1e40af")
+    x = 0
+    for c_idx, col in enumerate(df_total.columns):
+        val = str(df_total[col].iloc[0])
+        draw.text((x + PADDING, y_total + 11), val, font=font_total, fill="#ffffff")
+        x += col_widths[c_idx]
+
+    # bordas separadoras entre colunas
     x = 0
     for w in col_widths[:-1]:
         x += w
