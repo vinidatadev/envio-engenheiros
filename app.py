@@ -25,17 +25,31 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
     colunas = [c for c in df.columns if c not in ("Engenheiro", "Email", "Telefone")]
     df_img = df[colunas].copy()
 
-    PADDING = 12
-    HEADER_H = 36
-    ROW_H = 30
-    FONT_SIZE = 13
+    PADDING = 16
+    HEADER_H = 44
+    ROW_H = 36
+    FONT_SIZE = 16
 
-    try:
-        font_header = ImageFont.truetype("arial.ttf", FONT_SIZE)
-        font_body   = ImageFont.truetype("arial.ttf", FONT_SIZE)
-    except Exception:
-        font_header = ImageFont.load_default()
-        font_body   = ImageFont.load_default()
+    # DejaVu suporta acentos; fallback pra arial no Windows local
+    def load_font(bold=False, size=FONT_SIZE):
+        candidates = (
+            ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+             "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"]
+            if bold else
+            ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+             "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+             "arial.ttf"]
+        )
+        for path in candidates:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        return ImageFont.load_default()
+
+    font_header = load_font(bold=True)
+    font_body   = load_font()
+    font_title  = load_font(bold=True, size=18)
 
     # calcula largura de cada coluna
     dummy = Image.new("RGB", (1, 1))
@@ -50,26 +64,22 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
         col_widths.append(int(max_w) + PADDING * 2)
 
     total_w = sum(col_widths)
-    title_h = 40
+    title_h = 48
     total_h = title_h + HEADER_H + ROW_H * len(df_img) + 4
 
     img = Image.new("RGB", (total_w, total_h), "#1e293b")
     draw = ImageDraw.Draw(img)
 
     # título
-    try:
-        font_title = ImageFont.truetype("arialbd.ttf", 15)
-    except Exception:
-        font_title = font_header
     draw.rectangle([0, 0, total_w, title_h], fill="#0f172a")
-    draw.text((PADDING, 10), f"Obras - {nome_engenheiro}", font=font_title, fill="#ffffff")
+    draw.text((PADDING, 12), f"Obras - {nome_engenheiro}", font=font_title, fill="#ffffff")
 
     # cabeçalho
     x = 0
     y = title_h
     draw.rectangle([0, y, total_w, y + HEADER_H], fill="#0f172a")
     for i, col in enumerate(df_img.columns):
-        draw.text((x + PADDING, y + 8), str(col), font=font_header, fill="#ffffff")
+        draw.text((x + PADDING, y + 10), str(col), font=font_header, fill="#ffffff")
         x += col_widths[i]
 
     # linhas
@@ -79,7 +89,7 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
         draw.rectangle([0, y, total_w, y + ROW_H], fill=bg)
         x = 0
         for c_idx, val in enumerate(row.astype(str)):
-            draw.text((x + PADDING, y + 7), val, font=font_body, fill="#e2e8f0")
+            draw.text((x + PADDING, y + 9), val, font=font_body, fill="#e2e8f0")
             x += col_widths[c_idx]
 
     # borda separadora entre colunas
