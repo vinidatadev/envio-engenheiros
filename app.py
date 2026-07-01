@@ -101,21 +101,17 @@ def enviar_texto(telefone: str, mensagem: str):
     r.raise_for_status()
     return r.json()
 
-# ── Envia imagem via Evolution API ──────────────────────────────────────────────
+# ── Envia imagem via Evolution API (v2.3.7 — multipart) ────────────────────────
 def enviar_imagem(telefone: str, img_bytes: bytes, caption: str):
-    import base64
-    b64 = base64.b64encode(img_bytes).decode()
     url = f"{EVOLUTION_URL}/message/sendMedia/{INSTANCE_NAME}"
-    payload = {
+    headers = {"apikey": EVOLUTION_KEY}
+    files = {"file": ("tabela.png", img_bytes, "image/png")}
+    data = {
         "number": telefone,
         "mediatype": "image",
-        "mimetype": "image/png",
-        "fileName": "tabela.png",
-        "media": b64,
         "caption": caption,
     }
-    headers = {"apikey": EVOLUTION_KEY, "Content-Type": "application/json"}
-    r = requests.post(url, json=payload, headers=headers, timeout=30)
+    r = requests.post(url, data=data, files=files, headers=headers, timeout=30)
     r.raise_for_status()
     return r.json()
 
