@@ -109,7 +109,9 @@ def enviar_imagem(telefone: str, img_bytes: bytes, caption: str):
     payload = {
         "number": telefone,
         "mediatype": "image",
-        "media": f"data:image/png;base64,{b64}",
+        "mimetype": "image/png",
+        "fileName": "tabela.png",
+        "media": b64,
         "caption": caption,
     }
     headers = {"apikey": EVOLUTION_KEY, "Content-Type": "application/json"}
