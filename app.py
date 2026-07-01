@@ -30,11 +30,10 @@ def gerar_imagem_tabela(df: pd.DataFrame, nome_engenheiro: str) -> bytes:
         if pd.api.types.is_numeric_dtype(df_img[col]):
             df_img[col] = df_img[col].apply(lambda v: f"{v:.1f}" if pd.notna(v) else "")
 
-    # monta linha de total (soma só colunas numéricas originais)
+    # monta linha de total (soma só Vol.Carteira)
     total_row = {}
-    numeric_cols = [c for c in df[colunas].columns if pd.api.types.is_numeric_dtype(df[c])]
     for col in df_img.columns:
-        if col in numeric_cols:
+        if col == "Vol.Carteira":
             total_row[col] = f"{df[col].sum():.1f}"
         elif col == df_img.columns[0]:
             total_row[col] = "TOTAL"
