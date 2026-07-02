@@ -5,3 +5,4 @@ pillow
 requests
 pytz
 python-dotenv
+bcrypt

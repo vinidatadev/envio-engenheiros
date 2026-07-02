@@ -1,6 +1,7 @@
 import os
 import io
 import base64
+import bcrypt
 import requests
 import streamlit as st
 import pandas as pd
@@ -11,9 +12,37 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EVOLUTION_URL  = os.getenv("EVOLUTION_URL", "")
-EVOLUTION_KEY  = os.getenv("EVOLUTION_KEY", "")
-INSTANCE_NAME  = os.getenv("INSTANCE_NAME", "")
+EVOLUTION_URL       = os.getenv("EVOLUTION_URL", "")
+EVOLUTION_KEY       = os.getenv("EVOLUTION_KEY", "")
+INSTANCE_NAME       = os.getenv("INSTANCE_NAME", "")
+APP_USERNAME        = os.getenv("APP_USERNAME", "admin")
+APP_PASSWORD_HASH   = os.getenv("APP_PASSWORD_HASH", "")
+
+# ── Autenticação ────────────────────────────────────────────────────────────────
+def check_password(username: str, password: str) -> bool:
+    if username != APP_USERNAME:
+        return False
+    if not APP_PASSWORD_HASH:
+        return False
+    return bcrypt.checkpw(password.encode(), APP_PASSWORD_HASH.encode())
+
+def login_screen():
+    st.set_page_config(page_title="Login", page_icon="🔒", layout="centered")
+    st.title("🔒 Login")
+    with st.form("login_form"):
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        submitted = st.form_submit_button("Entrar", use_container_width=True)
+        if submitted:
+            if check_password(username, password):
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Usuário ou senha incorretos.")
+
+if not st.session_state.get("authenticated"):
+    login_screen()
+    st.stop()
 
 # ── Helpers Evolution API ───────────────────────────────────────────────────────
 def _headers():
@@ -195,7 +224,15 @@ def enviar_imagem(telefone: str, img_bytes: bytes, caption: str):
 
 # ── App ─────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Envio para Engenheiros", page_icon="👷", layout="wide")
-st.title("👷 Envio de Obras para Engenheiros")
+
+col_title, col_logout = st.columns([6, 1])
+with col_title:
+    st.title("👷 Envio de Obras para Engenheiros")
+with col_logout:
+    st.write("")
+    if st.button("Sair", use_container_width=True):
+        st.session_state["authenticated"] = False
+        st.rerun()
 
 aba_envio, aba_whatsapp = st.tabs(["📤 Envio de Obras", "📱 WhatsApp"])
 
