@@ -250,57 +250,37 @@ with aba_whatsapp:
         st.stop()
 
     st.subheader(f"Instância: `{INSTANCE_NAME}`")
+    st.divider()
 
-    col_status, col_acoes = st.columns([1, 2])
+    col_status, col_qr = st.columns([1, 1])
 
     with col_status:
+        st.markdown("**Status da conexão**")
         if st.button("🔄 Verificar status"):
             try:
                 estado, raw = api_status()
                 cor = "🟢" if estado == "open" else ("🟡" if estado in ("connecting", "qrcode") else "🔴")
                 st.metric("Status", f"{cor} {estado}")
                 if estado == "desconhecido":
-                    st.json(raw)  # mostra resposta bruta pra diagnóstico
+                    st.json(raw)
             except Exception as e:
                 st.error(f"Erro ao verificar: {e}")
 
-    with col_acoes:
-        st.write("Ações")
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            if st.button("📲 Conectar / QR Code"):
-                try:
-                    resp = api_connect()
-                    # QR Code pode vir como base64 ou URL
-                    qr_base64 = (
-                        resp.get("base64")
-                        or resp.get("qrcode", {}).get("base64")
-                        or resp.get("code")
-                    )
-                    if qr_base64:
-                        # remove prefixo data:image se vier junto
-                        qr_clean = qr_base64.split(",")[-1]
-                        qr_bytes = base64.b64decode(qr_clean)
-                        st.image(qr_bytes, caption="Escaneie o QR Code no WhatsApp", width=300)
-                    else:
-                        st.info("Instância já conectada ou QR não disponível.")
-                        st.json(resp)
-                except Exception as e:
-                    st.error(f"Erro ao conectar: {e}")
-
-        with c2:
-            if st.button("🔌 Desconectar"):
-                try:
-                    api_logout()
-                    st.success("Desconectado com sucesso.")
-                except Exception as e:
-                    st.error(f"Erro ao desconectar: {e}")
-
-        with c3:
-            if st.button("♻️ Reiniciar"):
-                try:
-                    api_restart()
-                    st.success("Instância reiniciada.")
-                except Exception as e:
-                    st.error(f"Erro ao reiniciar: {e}")
+    with col_qr:
+        st.markdown("**Conectar WhatsApp**")
+        if st.button("📲 Gerar QR Code"):
+            try:
+                resp = api_connect()
+                qr_base64 = (
+                    resp.get("base64")
+                    or resp.get("qrcode", {}).get("base64")
+                    or resp.get("code")
+                )
+                if qr_base64:
+                    qr_bytes = base64.b64decode(qr_base64.split(",")[-1])
+                    st.image(qr_bytes, caption="Escaneie no WhatsApp", width=280)
+                else:
+                    st.info("Instância já conectada ou QR não disponível.")
+                    st.json(resp)
+            except Exception as e:
+                st.error(f"Erro ao conectar: {e}")
