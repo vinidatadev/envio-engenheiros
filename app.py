@@ -235,6 +235,10 @@ with aba_envio:
 # ABA 2 — WhatsApp / Evolution API
 # ════════════════════════════════════════════════════════════════════════════════
 with aba_whatsapp:
+    if not EVOLUTION_URL or not EVOLUTION_KEY or not INSTANCE_NAME:
+        st.error("⚠️ Variáveis de ambiente não configuradas. Adicione EVOLUTION_URL, EVOLUTION_KEY e INSTANCE_NAME no Easypanel (Environment).")
+        st.stop()
+
     st.subheader(f"Instância: `{INSTANCE_NAME}`")
     st.caption(f"Servidor: {EVOLUTION_URL}")
 
