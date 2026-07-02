@@ -4,3 +4,4 @@ openpyxl
 pillow
 requests
 pytz
+python-dotenv
