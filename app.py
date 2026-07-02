@@ -26,11 +26,21 @@ def api_status():
     )
     r.raise_for_status()
     instances = r.json()
+    # a v2.3.x retorna lista; cada item pode ter formatos diferentes
     for inst in instances:
-        name = inst.get("instance", {}).get("instanceName") or inst.get("name", "")
+        inner = inst.get("instance", inst)
+        name  = inner.get("instanceName") or inner.get("name", "")
         if name == INSTANCE_NAME:
-            return inst.get("instance", {}).get("state") or inst.get("state", "desconhecido")
-    return "não encontrada"
+            state = (
+                inner.get("state")
+                or inner.get("status")
+                or inst.get("state")
+                or inst.get("status")
+                or inst.get("connectionStatus")
+                or inner.get("connectionStatus")
+            )
+            return state or "desconhecido", inst  # retorna estado + raw pra debug
+    return "não encontrada", {}
 
 def api_connect():
     r = requests.get(
@@ -240,16 +250,17 @@ with aba_whatsapp:
         st.stop()
 
     st.subheader(f"Instância: `{INSTANCE_NAME}`")
-    st.caption(f"Servidor: {EVOLUTION_URL}")
 
     col_status, col_acoes = st.columns([1, 2])
 
     with col_status:
         if st.button("🔄 Verificar status"):
             try:
-                estado = api_status()
-                cor = "🟢" if estado == "open" else "🔴"
+                estado, raw = api_status()
+                cor = "🟢" if estado == "open" else ("🟡" if estado in ("connecting", "qrcode") else "🔴")
                 st.metric("Status", f"{cor} {estado}")
+                if estado == "desconhecido":
+                    st.json(raw)  # mostra resposta bruta pra diagnóstico
             except Exception as e:
                 st.error(f"Erro ao verificar: {e}")
 
